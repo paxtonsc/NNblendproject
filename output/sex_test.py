@@ -11,9 +11,19 @@ import os
 N = 100
 POS_NUM_GAL = 5
 
-def run_sex():
-	f = open("sew_out.dat", "w+")
+def run_sex(draw_figures=True):
+	"""
+	writes Source extractor output to a file named 'sew_out.dat'
+	also records the x, y, and radius of every galaxy that source extractor identifies
 	
+	:params draw_figure: if true, appends the .fits images into a list to export annotated .pngs
+	if false, program is able to run more quickly
+
+	:return np.array: recording the profiles that Source Extractor identified per image and a 
+	list of the images (which may be empty)
+	"""
+
+	f = open("sew_out.dat", "w+")
 	
 	sew = sewpy.SEW(params=["X_IMAGE", "Y_IMAGE", "FLUX_RADIUS(3)","ELLIPTICITY", "FLAGS"],
 		config={"DETECT_MINAREA":10, "PHOT_FLUX":"0.3, 0.5, 0.8"})
@@ -34,16 +44,29 @@ def run_sex():
 			dimensions[i][j*3] = data[j][0]
 			dimensions[i][j*3+1]= data[j][1]
 			dimensions[i][j*3+2] = data[j][2]
-	
-		image_concat.append(fits.getdata(file_name))
+
+		if (draw_figures):
+			image_concat.append(fits.getdata(file_name))
+
 		ascii.write(out["table"], output=f)
 	
 	f.close()
+
 	return (image_concat, dimensions)
 
-def draw_plot(i, images, data, real_params):
 
-	# creates graph
+def draw_plot(i, images, data, real_params):
+	"""
+	draws circles to represent the original galaxy profiles as rendered by galsim 
+	and the recorded galaxy profiles as extracted by Source Extractor
+
+	:params i: index
+	:images list of .fits renders:
+	:data (x,y,r) for source extractor identified image. Data per image is contained 
+	a single row:
+	:real_params original params used by GalSim:
+	"""
+
 	fig, ax = plt.subplots()
 	ax.set_aspect('equal')
 	ax.imshow(images[i], cmap='gray')
@@ -70,12 +93,12 @@ def draw_plot(i, images, data, real_params):
 	plt.close()
 
 
-def analyze():
+def analyze(draw_images=True):
 	# plot onto fits files
 	#f = open("sew_out.dat", 'r')
 	#data = f.read()
 
-	images, data = run_sex()
+	images, data = run_sex(draw_images)
 	real_params = np.loadtxt('gal_sim_params.txt')	
 	accurate = np.ones(N)
 
@@ -84,16 +107,9 @@ def analyze():
 		sex_accurate = 0
 
 		# draw images if we want
-		draw_plot(i, images, data, real_params)
+		if draw_images:
+			draw_plot(i, images, data, real_params)
 
-		#if (real_params[2*i+1][0]):
-		#	sex_accurate +=1
-
-		#if (data[i][3]):
-		#	sex_accurate -=1
-
-		#if sex_accurate != 0:
-		#	accurate[i] = 0
 	
 	
 analyze()

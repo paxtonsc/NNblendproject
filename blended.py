@@ -6,52 +6,41 @@ import logging
 import time
 import galsim
 
+def import_params():
+	"""
+	TODO: package input_maker.py and import to avoid this save and load
+	step.
+	"""
 
-def main(argv):
-	logging.basicConfig(format="%(message)s", level=logging.INFO, stream=sys.stdout)
-	logger = logging.getLogger("Blended test")
-
-	#number of images
-	N = 100
-	NUM_GAL_POS = 5
-	NUM_PARAMS = 9
-
-	#sixe of image
-	XSIZE = 50
-	YSIZE = 50
-
-	# define location to pull parameters from for all blended galaxies
 	cat_file_name = os.path.join('input', 'test_input.asc')
-	if not os.path.isdir('output'):
-		os.mkdir('output')
-	multi_file_name = os.path.join('output', 'multi_blend.fits')
-	file_name = os.path.join('output', 'blends', 'single_blend')
-	params_file_name = os.path.join('output','gal_sim_params.txt')
-
-
-	# not completly sure what this does, value taken from demo 4
-	random_seed = 8241573
-	sky_level = 1.e6				# ADU/ acrsec^2
-	pixel_scale = 1				# arcsec/pixel
-
-	logger.info('Simple test for created blended, randomized galaxies using: ')
-	logger.info('	-Galaxy is guassian with parameters (flux, sigma) taken from catalog')
-	logger.info('	-PSF also Gaussian with parameters taken from catalog')
-	logger.info('	-Noise also Gaussian, with standard deviation (or variance) taken from catalog')
-	logger.info('	-Number of galaxies range from 0 to 4 also taken from catalog, uniform distribution')
-	logger.info('	-location of galxies (x,y) also from catalog from random distribution')
-
-
-	# read in input from catalog 
 	cat = galsim.Catalog(cat_file_name)
+	return cat
+
+
+def draw_gal_sims(num=10000, num_gals_per=5, num_params=9, xsize=50, ysize=50):
+	"""
+	function uses GalSim to draw images based on randomied parameters
+
+	:param num: number of images to draw
+	:param num_gal_per: max number of galaxies per draw
+	:param num_params: number of params that define a single galaxy
+	:param xsize: horizontal size of image in pixels
+	:param ysize: vertical size of image in pixels
+	
+	:return tuple of image list and numpy array of param data
+	that used in creation of the images
+	"""
 
 	images = []
-	param_data = np.zeros((N*NUM_GAL_POS, NUM_PARAMS))
+	param_data = np.zeros((num*num_gals_per, num_params))
+	pixel_scale = 1
+	cat = import_params()
+	file_name = os.path.join('output', 'blends', 'single_blend')
 
-	for k in range(N):
+	for k in range(num):
 		
 		# save params
-		params = np.zeros((NUM_GAL_POS, NUM_PARAMS))
+		params = np.zeros((num_gals_per, num_params))
 
 		# add first galaxy
 		params[0][6] = gal_flux = cat.getFloat(k, 0)
@@ -65,34 +54,35 @@ def main(argv):
 		params[0][4] = e2_1 = cat.getFloat(k, 8)
 
 		gal = galsim.Gaussian(flux=gal_flux, sigma=gal_sigma)
+		
 		gal = gal.shear(e1 = e1_1, e2 = e2_1)
 		psf = galsim.Gaussian(flux=psf_flux, sigma=psf_sigma)
 
 		final = galsim.Convolve([gal, psf])
 		final = final.shift(gal_x, gal_y)
 
-		image = galsim.ImageF(XSIZE, YSIZE)
+		image = galsim.ImageF(xsize, ysize)
 		final.drawImage(image, scale=pixel_scale)
 
 		image.addNoise(galsim.GaussianNoise(sigma=noise))
-		param_data[NUM_GAL_POS*k] = params[0]
+		param_data[num_gals_per*k] = params[0]
 
-		# add up to NUM_GAL_POS -1 more galaxies to image
-		for i in range(1,NUM_GAL_POS):
+		# add up to num_gals_per -1 more galaxies to image
+		for i in range(1,num_gals_per):
 			coin = np.random.uniform(0,1,1)
 
 			# 30 percent probaility of adding certain gal in
 			if coin > 0.7:
 							
-				params[i][6] = gal2_flux = cat.getFloat(k, NUM_PARAMS*i + 0)
-				params[i][2] = gal2_sigma = cat.getFloat(k, NUM_PARAMS*i + 1)
-				params[i][7] = psf2_flux = cat.getFloat(k, NUM_PARAMS*i + 2)
-				params[i][8] = psf2_sigma = cat.getFloat(k, NUM_PARAMS*i + 3)
-				params[i][0] = gal2_x = cat.getFloat(k, NUM_PARAMS*i + 4)
-				params[i][1] = gal2_y = cat.getFloat(k, NUM_PARAMS*i + 5)
-				params[i][5] = noise2 = cat.getFloat(k, NUM_PARAMS*i + 6)
-				params[i][3] = e1_2 = cat.getFloat(k, NUM_PARAMS*i + 7)
-				params[i][4] = e2_2 = cat.getFloat(k, NUM_PARAMS*i + 8)
+				params[i][6] = gal2_flux = cat.getFloat(k, num_params*i + 0)
+				params[i][2] = gal2_sigma = cat.getFloat(k, num_params*i + 1)
+				params[i][7] = psf2_flux = cat.getFloat(k, num_params*i + 2)
+				params[i][8] = psf2_sigma = cat.getFloat(k, num_params*i + 3)
+				params[i][0] = gal2_x = cat.getFloat(k, num_params*i + 4)
+				params[i][1] = gal2_y = cat.getFloat(k, num_params*i + 5)
+				params[i][5] = noise2 = cat.getFloat(k, num_params*i + 6)
+				params[i][3] = e1_2 = cat.getFloat(k, num_params*i + 7)
+				params[i][4] = e2_2 = cat.getFloat(k, num_params*i + 8)
 
 				gal2 = galsim.Gaussian(flux=gal2_flux, sigma=gal2_sigma)
 				gal2 = gal2.shear(e1 = e1_2, e2 = e2_2)
@@ -104,15 +94,42 @@ def main(argv):
 				image = final2.drawImage(image=image, scale=pixel_scale, add_to_image=True)
 				image.addNoise(galsim.GaussianNoise(sigma=noise2))
 
-				param_data[NUM_GAL_POS*k + i] = params[i]
+				param_data[num_gals_per*k + i] = params[i]
 
 
 		image.write(file_name + '%s.fits' % k)
-
-		# adds image to list
 		images.append(image)
+	
+	return (images, param_data)
 
-	galsim.fits.writeCube(images, multi_file_name)
+def main(argv):
+	"""
+	main function in blended.py. writes to logger, calls draw_gal_sims() to
+	produce images, param_data and saves both to a text file
+
+	:params argv:
+	"""
+
+	logging.basicConfig(format="%(message)s", level=logging.INFO, stream=sys.stdout)
+	logger = logging.getLogger("Blended test")
+
+	if not os.path.isdir('output'):
+		os.mkdir('output')
+	multi_file_name = os.path.join('output', 'multi_blend.fits')
+	params_file_name = os.path.join('output','gal_sim_params.txt')
+
+	logger.info('Simple test for created blended, randomized galaxies using: ')
+	logger.info('	-Galaxy is guassian with parameters (flux, sigma) taken from catalog')
+	logger.info('	-PSF also Gaussian with parameters taken from catalog')
+	logger.info('	-Noise also Gaussian, with standard deviation (or variance) taken from catalog')
+	logger.info('	-Number of galaxies range from 0 to 4 also taken from catalog, uniform distribution')
+	logger.info('	-location of galxies (x,y) also from catalog from random distribution')
+
+	images, param_data = draw_gal_sims()
+
+	# for large number of files, writing to cube becomes unwieldy
+	# galsim.fits.writeCube(images, multi_file_name)
+
 	logger.info('Images written to multi-extension fits file %r', multi_file_name)
 	logger.info('Created %s images', len(images))
 
