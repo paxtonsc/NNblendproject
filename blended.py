@@ -17,13 +17,14 @@ def import_params():
 	return cat
 
 
-def draw_gal_sims(num=10000, num_gals_per=5, num_params=9, xsize=50, ysize=50):
+def draw_gal_sims(num=10000, num_gals_per=5, num_params=9, prob=0.5, xsize=50, ysize=50):
 	"""
 	function uses GalSim to draw images based on randomied parameters
 
 	:param num: number of images to draw
 	:param num_gal_per: max number of galaxies per draw
 	:param num_params: number of params that define a single galaxy
+	:param prob: probability of each possible additional galaxy being addded
 	:param xsize: horizontal size of image in pixels
 	:param ysize: vertical size of image in pixels
 	
@@ -33,7 +34,7 @@ def draw_gal_sims(num=10000, num_gals_per=5, num_params=9, xsize=50, ysize=50):
 
 	images = []
 	param_data = np.zeros((num*num_gals_per, num_params))
-	pixel_scale = 1
+	pixel_scale = 0.2
 	cat = import_params()
 	file_name = os.path.join('output', 'blends', 'single_blend')
 
@@ -72,7 +73,7 @@ def draw_gal_sims(num=10000, num_gals_per=5, num_params=9, xsize=50, ysize=50):
 			coin = np.random.uniform(0,1,1)
 
 			# 30 percent probaility of adding certain gal in
-			if coin > 0.7:
+			if coin < prob:
 							
 				params[i][6] = gal2_flux = cat.getFloat(k, num_params*i + 0)
 				params[i][2] = gal2_sigma = cat.getFloat(k, num_params*i + 1)
@@ -125,7 +126,7 @@ def main(argv):
 	logger.info('	-Number of galaxies range from 0 to 4 also taken from catalog, uniform distribution')
 	logger.info('	-location of galxies (x,y) also from catalog from random distribution')
 
-	images, param_data = draw_gal_sims()
+	images, param_data = draw_gal_sims(num_gals_per=2, prob=1)
 
 	# for large number of files, writing to cube becomes unwieldy
 	# galsim.fits.writeCube(images, multi_file_name)
