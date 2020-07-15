@@ -37,10 +37,12 @@ def draw_figure(data_sub, objects):
 	plt.close()
 
 
-N = 100
+N = 10000
 real_params = np.loadtxt('gal_sim_params.txt')
 POS_NUM_GAL = 5
 position_data = np.zeros((POS_NUM_GAL*N, 2))
+num_found_data = np.zeros(N)
+draw_figures = False
 
 for i in range(N):
 
@@ -54,13 +56,17 @@ for i in range(N):
 
 	objects = sep.extract(data_sub, 1.5, err=bkg.globalrms)
 
-	draw_figure(data_sub, objects)
+	if (draw_figures):
+		draw_figure(data_sub, objects)
 
 	for j in range(len(objects)):
 		position_data[2*i+j][0] = objects['x'][j]
 		position_data[2*i+j][1] = objects['y'][j]
+	
+	num_found_data[i] = len(objects)
 
 np.savetxt('sep_positions.txt', np.asarray(position_data))
+np.savetxt('sep_num_found.txt', num_found_data)
 
 
 
