@@ -18,31 +18,45 @@ torch.manual_seed(RANDOM_SEED)
 
 # other Global vars
 MODEL_PATH = 'model.pth'
-NUM_PARAMS = 18
-
+INPUT_DIM = 9
+HIDDEN_DIM = 36				# somewhat arbitrarily choosen
+NUM_LAYERS = 2
+OUTPUT_DIM = 2
+NUM_TRAIN = 100				# somewhat arbitrarily choosen
 
 # set up tensorboard
 writer = SummaryWriter()
 
-# simple NN class conisting of two hidden layers
-class Neural_Network(nn.Module):
-	def __init__(self):
-		super(Neural_Network, self).__init__()
+# LSTM class
+class LSTM(nn.Module):
 
-		self.inputSize = NUM_PARAMS
-		self.outputSize = 4
-		self.hiddenSize1 = 48
-		self.hiddenSize2 = 24
-
-		self.fc1 = nn.Linear(self.inputSize, self.hiddenSize1)
-		self.fc2 = nn.Linear(self.hiddenSize1, self.hiddenSize2)
-		self.fc3 = nn.Linear(self.hiddenSize2, self.outputSize)
+	def __init__(self, input_dim, hidden_dim, batch_size, output_dim=1):
 		
-	def forward(self, X):
-		X = F.relu(self.fc1(X))
-		X = F.relu(self.fc2(X))
-		X = self.fc3(X)
-		return X
+		super(LSTM, self).__init__()
+		self.input_dim = input_dim
+		self.hidden_dim = hidden_dim
+		# number of training examples to train on each iteration
+		self.batch_size = batch_size
+		# number of reccurent layers. Default = 1, more than 1 results in a 
+		# 'stacked' if more than 1
+		self.num_layers = num_layers
+
+		# LSTM layer
+		self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers)
+
+		# define output layer?
+		self.linear = nn.Linear(self.hidden_dim, output_dim)
+	
+	def init_hidden(self):
+		return (torch.zeros(self.num_layers, self.batch_size, self.hidden_dim),
+				torch.zeros(self.num_layers, self.batch_size, self.hidden_dim))
+	
+	def forward(self, input):
+		lstm_out, self.hidden = self.lstm(input.view(len(input), self.batch_size, -1))
+	
+		# only take output from final time step
+		# but generate at every time step?
+		y_pred = self.linear(lstm_out[-1].view(self.batch_size, -1))
 	
 
 # return training data X, y and test data X, y
@@ -74,56 +88,41 @@ def normalize(x):
 
 
 def train():
-	# collect data and turn into PyTorch tensors
-	X, y, X_test, y_test = load_data()
-	X = torch.from_numpy(X).float()
-	y = torch.from_numpy(y).float()
-	y_test = torch.from_numpy(y_test).float()
-	X_test = torch.from_numpy(X_test).float()
-
-	X = normalize(X)
-	X_test = normalize(X_test)
-	
-
 	# initates net object, constructs loss function and optimizer
 	# optimizer updates parameters based on computed gradients
 	# We implement Adam algorithm
-	NN = Neural_Network()
-	criterion = nn.MSELoss()
-	optimizer = optim.SGD(NN.parameters(), lr=5e-5)
+
+	criterion = nn.MSELoss(size_average=False)
+	optimizer = optim.Adam(NN.parameters(), lr=5e-5)
 
 	prev_loss = 0
+	hist = np.zeros(num_epochs)
 	# train 
-	for i in range(10000):
-		y_pred = NN(X)
-		y_pred = torch.squeeze(y_pred)
-		y_test_pred = NN(X_test)
-		y_test_pred = torch.squeeze(y_test_pred)
-		train_loss = criterion(y_pred, y)
-		test_loss = criterion(y_test_pred, y_test)
-		
-		writer.add_scalars('Loss', {'Train loss': train_loss, 'Test loss': test_loss} , i)
+	for i in range(num_epochs):
+		model.zero_grad()
 
-		if (i%100 == 0):
+		# Initialise hidden states
+		model.hidden = model.init_hidden()
 
-			print("#", i, " train loss ", round_tensor(train_loss), ' test loss', round_tensor(test_loss))
-			
-			# stop training if the loss has converged
-			if torch.abs(prev_loss - train_loss) < 1e-5:
-				break
-			prev_loss = train_loss
+		y_pred = model(X_train)
+		loss = loss_fn(y_pred, y_train)
+		if i %100 == 0:
+			print('Epoch ', i, 'MSE: ', loss.item())
+		hist[i] = loss.item()
 
-		
-		# use optimizer object to zero out grad
-		# by default grads accumulate
 		optimizer.zero_grad()
-
-		# backward pass and update parameters
-		train_loss.backward()
+		loss.backward()
 		optimizer.step()
 
-	torch.save(NN, MODEL_PATH)
-	print(y_test_pred[0:10,:])
-	print(y_test[0:10, :])
+# collect data and turn into PyTorch tensors
+X, y, X_test, y_test = load_data()
+X = torch.from_numpy(X).float()
+y = torch.from_numpy(y).float()
+y_test = torch.from_numpy(y_test).float()
+X_test = torch.from_numpy(X_test).float()
 
+X = normalize(X)
+X_test = normalize(X_test)
+
+model = LSTM(INPUT_DIM, HIDDEN_DIM, batch_size=NUM_TRAIN, output_dim=OUTPUT_DIM, num_layers=NUM_LAYERS)
 train()
