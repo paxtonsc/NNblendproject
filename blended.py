@@ -68,37 +68,30 @@ def draw_gal_sims(num=10000, num_gals_per=5, num_params=9, prob=0.4, xsize=50, y
 		image.addNoise(galsim.GaussianNoise(sigma=noise))
 		param_data[num_gals_per*k] = params[0]
 
-		num_gal_drawn = 1
-
+		extra = int(np.round(np.random.uniform(0, 4, 1)))
 		# add up to num_gals_per -1 more galaxies to image
-		for i in range(1,num_gals_per):
-			coin = np.random.uniform(0,1,1)
+		for i in range(1,extra+1):
+			params[i][6] = gal2_flux = cat.getFloat(k, num_params*i + 0)
+			params[i][2] = gal2_sigma = cat.getFloat(k, num_params*i + 1)
+			params[i][7] = psf2_flux = cat.getFloat(k, num_params*i + 2)
+			params[i][8] = psf2_sigma = cat.getFloat(k, num_params*i + 3)
+			params[i][0] = gal2_x = cat.getFloat(k, num_params*i + 4)
+			params[i][1] = gal2_y = cat.getFloat(k, num_params*i + 5)
+			params[i][5] = noise2 = cat.getFloat(k, num_params*i + 6)
+			params[i][3] = e1_2 = cat.getFloat(k, num_params*i + 7)
+			params[i][4] = e2_2 = cat.getFloat(k, num_params*i + 8)
 
-			# 30 percent probaility of adding certain gal in
-			if coin < prob:
-							
-				params[num_gal_drawn][6] = gal2_flux = cat.getFloat(k, num_params*i + 0)
-				params[num_gal_drawn][2] = gal2_sigma = cat.getFloat(k, num_params*i + 1)
-				params[num_gal_drawn][7] = psf2_flux = cat.getFloat(k, num_params*i + 2)
-				params[num_gal_drawn][8] = psf2_sigma = cat.getFloat(k, num_params*i + 3)
-				params[num_gal_drawn][0] = gal2_x = cat.getFloat(k, num_params*i + 4)
-				params[num_gal_drawn][1] = gal2_y = cat.getFloat(k, num_params*i + 5)
-				params[num_gal_drawn][5] = noise2 = cat.getFloat(k, num_params*i + 6)
-				params[num_gal_drawn][3] = e1_2 = cat.getFloat(k, num_params*i + 7)
-				params[num_gal_drawn][4] = e2_2 = cat.getFloat(k, num_params*i + 8)
+			gal2 = galsim.Gaussian(flux=gal2_flux, sigma=gal2_sigma)
+			gal2 = gal2.shear(e1 = e1_2, e2 = e2_2)
+			psf2 = galsim.Gaussian(flux=psf2_flux, sigma=psf2_sigma)
 
-				gal2 = galsim.Gaussian(flux=gal2_flux, sigma=gal2_sigma)
-				gal2 = gal2.shear(e1 = e1_2, e2 = e2_2)
-				psf2 = galsim.Gaussian(flux=psf2_flux, sigma=psf2_sigma)
+			final2 = galsim.Convolve([gal2, psf2])
+			final2 = final2.shift(gal2_x, gal2_y)
+			
+			image = final2.drawImage(image=image, scale=pixel_scale, add_to_image=True)
+			image.addNoise(galsim.GaussianNoise(sigma=noise2))
 
-				final2 = galsim.Convolve([gal2, psf2])
-				final2 = final2.shift(gal2_x, gal2_y)
-				
-				image = final2.drawImage(image=image, scale=pixel_scale, add_to_image=True)
-				image.addNoise(galsim.GaussianNoise(sigma=noise2))
-
-				param_data[num_gals_per*k + num_gal_drawn] = params[num_gal_drawn]
-				num_gal_drawn += 1
+			param_data[num_gals_per*k + i] = params[i]
 
 
 		image.write(file_name + '%s.fits' % k)

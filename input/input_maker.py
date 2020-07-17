@@ -23,8 +23,8 @@ def make_input_file(file_name, N, num_possible_gals):
 	for i in range(num_pos_gals):
 		array[:,i*params_per_gal + 0] = np.random.uniform(1.e4, 1.e5, N)
 		array[:,i*params_per_gal + 1] = np.random.uniform(0.1,0.5, N)
-		array[:,i*params_per_gal + 2] = np.ones(N)
-		array[:,i*params_per_gal + 3] = np.ones(N)*0.5
+		array[:,i*params_per_gal + 2] = np.random.uniform(0.9,1.1,N)
+		array[:,i*params_per_gal + 3] = np.random.uniform(0.4,0.6,N)
 		array[:,i*params_per_gal + 4] = np.random.uniform(-2., 2., N)
 		array[:,i*params_per_gal + 5] = np.random.uniform(-2., 2., N)
 		array[:,i*params_per_gal + 6] = np.random.uniform(25, 35, N)
