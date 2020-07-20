@@ -6,3 +6,7 @@ NN
 *.fits
 *.txt
 *.swp
+*.tmp
+*.py[cod]
+__pycache__/
+
