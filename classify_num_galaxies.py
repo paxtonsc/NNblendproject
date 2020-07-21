@@ -10,6 +10,7 @@ import os
 from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 
+from classical_classifier import classical_test
 
 # iniate psuedo random number generator
 RANDOM_SEED = 42
@@ -18,9 +19,10 @@ torch.manual_seed(RANDOM_SEED)
 
 # other Global vars
 MODEL_PATH = 'model.pth'
-NUM_PARAMS = 45
 GALS = 5
 PARAM_PER_GAL = 9
+NUM_PARAMS = GALS * PARAM_PER_GAL
+N = 10000
 
 # set up tensorboard for data viz
 writer = SummaryWriter()
@@ -71,10 +73,11 @@ def load_data():
 	y = F.one_hot(y_data.to(torch.int64), GALS).float()
 	
 	# break data into training and dev set
-	x_train = x[0:9000,:]
-	x_valid = x[9000:10000,:]
-	y_train = y[0:9000,:]
-	y_valid = y[9000:10000,:]
+	cut = int(0.9*N)
+	x_train = x[0:cut,:]
+	x_valid = x[cut:N,:]
+	y_train = y[0:cut,:]
+	y_valid = y[cut:N,:]
 
 
 	return (x_train, y_train, x_valid, y_valid)
@@ -134,7 +137,7 @@ def plot_loss_acc(acc_test, acc_train):
 	plt.xlabel('epochs (in hundreds)')
 	plt.legend()
 	file_name = os.path.join('charts', 'nn_accuracy.png')
-	plt.saveplt(file_name)
+	plt.savefig(file_name)
 	plt.show()
 
 
@@ -193,9 +196,12 @@ def plot_class_distribution(y_vals, x_vals, NN=False):
 	plt.show()
 
 
+
 def train():
 	# collect data and turn into PyTorch tensors
 	X, y, X_test, y_test = load_data()
+
+	classical_test(X_test, y_test)	
 
 	plot_class_distribution(y, X)
 	# initates net object, constructs loss function and optimizer
@@ -209,7 +215,7 @@ def train():
 	acc_train_vec = []
 	acc_vec = []
 	# train 
-	for i in range(1000):
+	for i in range(3000):
 		y_pred = NN(X)
 		y_pred = torch.squeeze(y_pred)
 		y_test_pred = NN(X_test)

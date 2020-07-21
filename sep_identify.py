@@ -80,7 +80,7 @@ def run_source_extractor(N, draw_figures=False):
 		np.savetxt(num_file_name, num_found_data)
 		print('updated training data')
 	
-run_source_extractor(10000)
+run_source_extractor(100000)
 #run_source_extractor(100, True)
 
 
