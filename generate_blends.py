@@ -42,35 +42,11 @@ def draw_gal_sims(num=100000, num_gals_per=5, num_params=9, prob=0.4, xsize=50, 
 		
 		# save params
 		params = np.zeros((num_gals_per, num_params))
-
-		# add first galaxy
-		params[0][6] = gal_flux = cat.getFloat(k, 0)
-		params[0][2] = gal_sigma = cat.getFloat(k, 1)
-		params[0][7] = psf_flux = cat.getFloat(k, 2)
-		params[0][8] = psf_sigma = cat.getFloat(k, 3)
-		params[0][0] = gal_x = cat.getFloat(k, 4)
-		params[0][1] = gal_y = cat.getFloat(k, 5)
-		params[0][5] = noise = cat.getFloat(k, 6)
-		params[0][3] = e1_1 = cat.getFloat(k, 7)
-		params[0][4] = e2_1 = cat.getFloat(k, 8)
-
-		gal = galsim.Gaussian(flux=gal_flux, sigma=gal_sigma)
-		
-		gal = gal.shear(e1 = e1_1, e2 = e2_1)
-		psf = galsim.Gaussian(flux=psf_flux, sigma=psf_sigma)
-
-		final = galsim.Convolve([gal, psf])
-		final = final.shift(gal_x, gal_y)
-
 		image = galsim.ImageF(xsize, ysize)
-		final.drawImage(image, scale=pixel_scale)
+		rv = int(np.round(np.random.uniform(1, 5, 1)))
 
-		image.addNoise(galsim.GaussianNoise(sigma=noise))
-		param_data[num_gals_per*k] = params[0]
+		for i in range(rv):
 
-		extra = int(np.round(np.random.uniform(0, 4, 1)))
-		# add up to num_gals_per -1 more galaxies to image
-		for i in range(1,extra+1):
 			params[i][6] = gal2_flux = cat.getFloat(k, num_params*i + 0)
 			params[i][2] = gal2_sigma = cat.getFloat(k, num_params*i + 1)
 			params[i][7] = psf2_flux = cat.getFloat(k, num_params*i + 2)
@@ -119,7 +95,7 @@ def main(argv):
 	logger.info('	-Galaxy is guassian with parameters (flux, sigma) taken from catalog')
 	logger.info('	-PSF also Gaussian with parameters taken from catalog')
 	logger.info('	-Noise also Gaussian, with standard deviation (or variance) taken from catalog')
-	logger.info('	-Number of galaxies range from 0 to 4 also taken from catalog, uniform distribution')
+	logger.info('	-Number of galaxies range from 1 to 5 also taken from catalog, uniform distribution')
 	logger.info('	-location of galxies (x,y) also from catalog from random distribution')
 
 	images, param_data = draw_gal_sims(num_gals_per=5)

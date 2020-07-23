@@ -11,6 +11,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 
 from classical_classifier import classical_test
+import plot_functions as p
 
 # iniate psuedo random number generator
 RANDOM_SEED = 42
@@ -22,7 +23,7 @@ MODEL_PATH = 'model.pth'
 GALS = 5
 PARAM_PER_GAL = 9
 NUM_PARAMS = GALS * PARAM_PER_GAL
-N = 10000
+N = 100000
 
 # set up tensorboard for data viz
 writer = SummaryWriter()
@@ -34,7 +35,7 @@ class Neural_Network(nn.Module):
 
 		self.inputSize = NUM_PARAMS
 		self.outputSize = GALS
-		self.hiddenSize1 = 128
+		self.hiddenSize1 = 64
 		self.hiddenSize2 = 64
 
 		self.fc1 = nn.Linear(self.inputSize, self.hiddenSize1)
@@ -99,7 +100,7 @@ def accuracy(y_true, y_pred, verbose=False, x=None):
 	predicted = F.one_hot(max_idxs, y_true.shape[1]).float()
 	one = torch.ones(y_true.shape)
 	if verbose:
-		plot_class_distribution(predicted, x, True)
+		p.plot_class_distribution(predicted, x, True)
 	return ((torch.logical_and(y_true, predicted)).sum().float()/len(y_true))
 
 
@@ -117,93 +118,26 @@ def normalize(x):
 
 	:param x: input tensor
 	"""
-
 	std = torch.std(x, dim=0)
+	mean = torch.mean(x, dim=0)
+
 	for i in range(len(x)):
-		x[i] = (x[i])/(std)
+		mask = (x[i] != 0)
+		mean = mask.int() * mean
+
+		x[i] = (x[i] - mean)/(std)
+
+	p.plot_data_distribution(x)
+
 	return x
-
-def plot_loss_acc(acc_test, acc_train):
-	"""
-	plots accuracy after the nn is done training
-	saves in 'charts' folder
-	
-	:param acc
-	:param acc_train
-	"""
-
-	plt.plot(acc_test,label='test accuracy')
-	plt.plot(acc_train, label='train accuracy')
-	plt.xlabel('epochs (in hundreds)')
-	plt.legend()
-	file_name = os.path.join('charts', 'nn_accuracy.png')
-	plt.savefig(file_name)
-	plt.show()
-
-
-def plot_class_distribution(y_vals, x_vals, NN=False):
-	""" 
-	create matrix viz of galsim num generated galaxies
-	to number recgnoized by source extractor or number that nn thinks 
-	source extractor will recognize.
-
-	:param y_vals: true number predicted by SE
-	:param x_vals: true parameters from GalSim
-	"""
-
-	matrix = np.zeros((6,6))
-	num_drawn = np.zeros(GALS)
-	j = 0
-	for x in x_vals:
-		num = 0
-		for i in range(5):
-			if x[PARAM_PER_GAL*i+1] or x[PARAM_PER_GAL*i]:
-				num += 1
-			else:
-				break
-		num_drawn[num -1] += 1
-		index = torch.where(y_vals[j] == 1)[0]
-		matrix[num][index+1] += 1
-		j+=1
-		assert(index+1 >0)
-	
-	matrix = (matrix.T/matrix.sum(axis=1)).T
-	
-	#sums = torch.sum(y_vals, dim=0)
-	#gals = ['one', 'two', 'three', 'four', 'five']
-	#plt.bar(gals, num_drawn, alpha=0.6, label='gal sim galaxies drawn')
-	#plt.bar(gals, sums, alpha=0.6, label='Source extractor galaxies found')
-	#plt.xlabel('number of galaxies')
-	#plt.ylabel('number of ocurances in training set')
-	#plt.suptitle('Training Data Makeup')
-	#if (NN):
-	#	plt.suptitle('NN predictions')
-	#plt.legend()
-	plt.matshow(matrix, cmap='YlOrRd')
-	plt.xlabel('# identified by SE')
-	plt.ylabel('# drawn by GalSim')
-	plt.suptitle('Training Data Makeup')
-	if (NN):
-		plt.suptitle('NN predictions')
-	for (i, j), z in np.ndenumerate(matrix):
-		plt.text(j, i, '{:0.3f}'.format(z), ha='center', va='center')
-	
-	path = os.path.join('charts', 'data_makeup.png')
-	if NN:
-		path = os.path.join('charts', 'data_makeup.NN.png')
-	
-	plt.savefig(path)
-	plt.show()
-
 
 
 def train():
 	# collect data and turn into PyTorch tensors
 	X, y, X_test, y_test = load_data()
 
-	classical_test(X_test, y_test)	
 
-	plot_class_distribution(y, X)
+	p.plot_class_distribution(y, X)
 	# initates net object, constructs loss function and optimizer
 	# optimizer updates parameters based on computed gradients
 	# We implement Adam algorithm
@@ -214,8 +148,9 @@ def train():
 	prev_loss = 0
 	acc_train_vec = []
 	acc_vec = []
+	
 	# train 
-	for i in range(3000):
+	for i in range(2000):
 		y_pred = NN(X)
 		y_pred = torch.squeeze(y_pred)
 		y_test_pred = NN(X_test)
@@ -224,8 +159,7 @@ def train():
 		test_loss = criterion(y_test_pred, y_test)
 		train_acc = accuracy(y, y_pred)
 		test_acc = accuracy(y_test, y_test_pred)
-		
-		
+
 		writer.add_scalars('Loss', {'Train loss': train_loss, 'Test loss': test_loss} , i)
 		writer.add_scalars('Accuracy', {'Train accuracy': train_acc, 'Test accuracy': test_acc} , i)
 
@@ -233,6 +167,7 @@ def train():
 			
 			acc_vec.append(test_acc)
 			acc_train_vec.append(train_acc)
+		
 
 			print("#", i, " train loss ", round_tensor(train_loss))
 			print("#", i, " train acc ", round_tensor(train_acc), " test acc ", round_tensor(test_acc))
@@ -252,6 +187,4 @@ def train():
 		optimizer.step()
 
 	print(accuracy(y_test, y_test_pred, True, x=X_test))
-	plot_loss_acc(acc_vec, acc_train_vec)
-
-train()
+	p.plot_loss_acc(acc_vec, acc_train_vec)
