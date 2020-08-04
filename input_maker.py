@@ -23,14 +23,14 @@ def make_input_file(file_name, N, num_possible_gals):
 	
 	for i in range(num_pos_gals):
 		array[:,i*params_per_gal + 0] = np.random.uniform(1.e4, 1.e5, N)
-		array[:,i*params_per_gal + 1] = np.random.uniform(0.1,0.5, N)
-		array[:,i*params_per_gal + 2] = np.random.uniform(0.9,1.1,N)
-		array[:,i*params_per_gal + 3] = np.random.uniform(0.4,0.6,N)
+		array[:,i*params_per_gal + 1] = np.clip(np.random.normal(0.3,0.1, N), 0.1, 1)
+		array[:,i*params_per_gal + 2] = np.ones(N)
+		array[:,i*params_per_gal + 3] = np.ones(N)*0.5
 		array[:,i*params_per_gal + 4] = np.random.uniform(-2., 2., N)
 		array[:,i*params_per_gal + 5] = np.random.uniform(-2., 2., N)
 		array[:,i*params_per_gal + 6] = np.random.uniform(25, 35, N)
-		array[:,i*params_per_gal + 7] = np.clip(np.random.normal(0, 0.2, N), -.99, .99)
-		array[:,i*params_per_gal + 8] = np.clip(np.random.normal(0, 0.2, N), -.99, .99)
+		array[:,i*params_per_gal + 7] = np.clip(np.random.normal(0, 0.15, N), a_min = -.99, a_max= .99)
+		array[:,i*params_per_gal + 8] = np.clip(np.random.normal(0, 0.15, N), a_min = -.99, a_max =.99)
 
 		assert(np.max(array[:,i* params_per_gal+7]) < 1 and np.min(array[:,i* params_per_gal+7]) > -1)
 		assert(np.max(array[:,i* params_per_gal+8]) < 1 and np.min(array[:,i* params_per_gal+8]) > -1)

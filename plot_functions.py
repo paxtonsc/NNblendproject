@@ -4,14 +4,32 @@ import numpy as np
 import os
 
 def plot_data_distribution(X):
-	X = torch.flatten(X)
-	plt.hist(X, bins=20)
-	plt.xlabel('data value')
-	plt.ylabel('# occurances')
+	#X = torch.flatten(X)
+	X = X.reshape(X.shape[0]*5, int(X.shape[1]/5))
+
+	fig, axs = plt.subplots(3, 3)
+	for i in range(9):
+		axs[int(i/3), i%3].hist(X[:,i], bins=20, alpha=0.4)
+
+	axs[0, 0].set_title('x-pos from center')
+	axs[0, 1].set_title('y-pos from center')
+	axs[0, 2].set_title('gal std')
+	axs[1, 0].set_title('e1')
+	axs[1, 1].set_title('e2')
+	axs[1, 2].set_title('noise')
+	axs[2, 0].set_title('gal flux')
+	axs[2, 1].set_title('psf flux')
+	axs[2, 2].set_title('psf std')
+
+	for ax in axs.flat:
+		ax.set(xlabel = 'data value', ylabel = '# occurances')
+		#ax.label_outer()
+
+	fig.tight_layout(pad=0.3)
+
 
 	fig_name = os.path.join('charts', 'data_distribution.png')
 	plt.savefig(fig_name)
-	plt.show()
 
 def plot_loss_acc(acc_test, acc_train, acc_1=None, acc_2=None, acc_3=None, acc_4=None, acc_5=None):
 	"""
@@ -34,7 +52,27 @@ def plot_loss_acc(acc_test, acc_train, acc_1=None, acc_2=None, acc_3=None, acc_4
 	plt.legend()
 	file_name = os.path.join('charts', 'nn_accuracy.png')
 	plt.savefig(file_name)
-	plt.show()
+
+
+def NN_vs_source(y_source, y_NN, GALS=5, PARAM_PER_GAL=9):
+	class_array = np.zeros((GALS+1, GALS+1))
+	for i in range(len(y_source)):
+		index1 = torch.where(y_source[i] == 1)[0]
+		index2 = torch.where(y_NN[i] == 1)[0]
+		class_array[index1+1][index2+1] += 1
+
+	class_array = (class_array.T/class_array.sum(axis=1)).T
+
+	plt.matshow(class_array, cmap='YlOrRd')
+	plt.ylabel('# identified by SE')
+	plt.xlabel('# predicted by NN')
+	plt.suptitle('NN predictions of SE vs SE')
+	for (i, j), z in np.ndenumerate(class_array):
+		plt.text(j, i, '{:0.3f}'.format(z), ha='center', va='center')
+	file_name = os.path.join('charts', 'nn_vs_se.png')
+	plt.savefig(file_name)
+
+
 
 
 def plot_class_distribution(y_vals, x_vals, NN=False, GALS=5, PARAM_PER_GAL=9):
@@ -89,4 +127,4 @@ def plot_class_distribution(y_vals, x_vals, NN=False, GALS=5, PARAM_PER_GAL=9):
 		path = os.path.join('charts', 'data_makeup.NN.png')
 	
 	plt.savefig(path)
-	plt.show()
+

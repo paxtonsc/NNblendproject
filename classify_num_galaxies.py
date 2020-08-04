@@ -4,9 +4,11 @@ import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import Dataset, DataLoader
 
 import numpy as np
 import os
+import sys
 from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 
@@ -21,20 +23,22 @@ torch.manual_seed(RANDOM_SEED)
 # other Global vars
 MODEL_PATH = 'model.pth'
 GALS = 5
+N = 100000
 PARAM_PER_GAL = 9
 NUM_PARAMS = GALS * PARAM_PER_GAL
-N = 100000
-
+PATH = os.path.join('models', 'gold_fish.pt')
 # set up tensorboard for data viz
 writer = SummaryWriter()
+
+
 
 # simple NN class conisting of two hidden layers
 class Neural_Network(nn.Module):
 	def __init__(self):
 		super(Neural_Network, self).__init__()
 
-		self.inputSize = NUM_PARAMS
-		self.outputSize = GALS
+		self.inputSize = 45
+		self.outputSize = 5
 		self.hiddenSize1 = 64
 		self.hiddenSize2 = 64
 
@@ -47,7 +51,7 @@ class Neural_Network(nn.Module):
 		X = F.relu(self.fc2(X))
 		X = torch.sigmoid(self.fc3(X))
 		return X
-	
+
 
 # return training data X, y and test data X, y
 def load_data():
@@ -74,6 +78,7 @@ def load_data():
 	y = F.one_hot(y_data.to(torch.int64), GALS).float()
 	
 	# break data into training and dev set
+	N = len(x)
 	cut = int(0.9*N)
 	x_train = x[0:cut,:]
 	x_valid = x[cut:N,:]
@@ -101,6 +106,7 @@ def accuracy(y_true, y_pred, verbose=False, x=None):
 	one = torch.ones(y_true.shape)
 	if verbose:
 		p.plot_class_distribution(predicted, x, True)
+		p.NN_vs_source(y_true, predicted)
 	return ((torch.logical_and(y_true, predicted)).sum().float()/len(y_true))
 
 
@@ -112,7 +118,7 @@ def round_tensor(t, decimal_place=3):
 
 	return round(t.item(), decimal_place)
 
-def normalize(x):
+def normalize(x, gals=5, plot=False):
 	"""
 	normalizes tensor x by dividing by std featurewise
 
@@ -121,13 +127,20 @@ def normalize(x):
 	std = torch.std(x, dim=0)
 	mean = torch.mean(x, dim=0)
 
+	for i in range(gals):
+		std[9*i + 8] = 1
+		std[9*i + 7] = 1
+		mean[9*i + 8] = 0
+		mean[9*i +7] = 0
+
+
 	for i in range(len(x)):
 		mask = (x[i] != 0)
 		mean = mask.int() * mean
-
 		x[i] = (x[i] - mean)/(std)
 
-	p.plot_data_distribution(x)
+	if plot:
+		p.plot_data_distribution(x)
 
 	return x
 
@@ -135,7 +148,6 @@ def normalize(x):
 def train():
 	# collect data and turn into PyTorch tensors
 	X, y, X_test, y_test = load_data()
-
 
 	p.plot_class_distribution(y, X)
 	# initates net object, constructs loss function and optimizer
@@ -150,7 +162,7 @@ def train():
 	acc_vec = []
 	
 	# train 
-	for i in range(2000):
+	for i in range(500):
 		y_pred = NN(X)
 		y_pred = torch.squeeze(y_pred)
 		y_test_pred = NN(X_test)
@@ -188,3 +200,13 @@ def train():
 
 	print(accuracy(y_test, y_test_pred, True, x=X_test))
 	p.plot_loss_acc(acc_vec, acc_train_vec)
+	torch.save(NN.state_dict(), PATH)
+
+
+def main(argv):
+	train()
+
+
+
+if __name__ == "__main__":
+	main(sys.argv)
