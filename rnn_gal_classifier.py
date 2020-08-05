@@ -15,8 +15,8 @@ import sys
 import os
 
 # define global vars
-BATCH_SIZE = 28
-EPOCH = 2
+BATCH_SIZE = 30
+EPOCH = 4
 INPUT_SIZE = 9
 TIME_STEP = 5
 PATH = os.path.join('models', 'rnn_model.pt')
@@ -91,8 +91,8 @@ class RNNClassifier(nn.Module):
     	"""
     	self.hidden_size = 64
 
-    	self.rnn = nn.LSTM(9, 64, num_layers=1, batch_first=True)
-    	self.out = nn.Linear(64, 5)
+    	self.rnn = nn.LSTM(INPUT_SIZE, 64, num_layers=1, batch_first=True)
+    	self.out = nn.Linear(64, TIME_STEP)
 
 
     def forward(self, x, x_lengths):
@@ -107,9 +107,10 @@ class RNNClassifier(nn.Module):
     	"""
     	# when pack = True we have a varaible sized RNN
     	# otherwise everything is just padded
-    	pack = True
+    	pack = False
 
     	batch_size, seq_len, _ = x.size()
+
 
     	#print('original size in forward', x.size())
     	if pack:
@@ -182,9 +183,13 @@ def train():
 	saves model at specifified path
 	"""
 
+	# load training, test data
 	train_set = GalDataset()
 	test_set = GalDataset(train=False)
 	train_loader = DataLoader(dataset=train_set, batch_size=BATCH_SIZE)
+	test_x = Variable(test_set.x, volatile=True).type(torch.FloatTensor)
+	test_y = test_set.y.numpy().squeeze()
+	test_lens = test_set.lens.numpy().squeeze()
 
 	# create RNN model
 	rnn = RNNClassifier()
@@ -197,17 +202,11 @@ def train():
 	n_iterations = math.ceil(total_samples/BATCH_SIZE)
 	print(total_samples, n_iterations)
 
-	test_x = Variable(test_set.x, volatile=True).type(torch.FloatTensor)
-	test_y = test_set.y.numpy().squeeze()
-	test_lens = test_set.lens.numpy().squeeze()
-
-	print(f'length of test set y {len(test_y)}')
-
 	for epoch in range(EPOCH):
 		for i, (x, y, l) in enumerate(train_loader):
 
 			# reshape x input values to (batch, time_step, input_size)
-			b_x = Variable(x.view(-1, 5, 9))
+			b_x = Variable(x.view(-1, TIME_STEP, INPUT_SIZE))
 			b_l = Variable(l)
 			b_y = Variable(y)
 
@@ -222,7 +221,7 @@ def train():
 
 			if i % 100 == 0:
 				
-				test_output = rnn(test_x.view(-1, 5, 9), test_lens)
+				test_output = rnn(test_x.view(-1, TIME_STEP, INPUT_SIZE), test_lens)
 				pred_y = torch.max(test_output, 1)[1].data.numpy().squeeze()
 				accuracy = sum(pred_y == test_y) / float(test_y.size)
 
@@ -255,7 +254,7 @@ def eval():
 
 	rnn.eval()
 
-	test_output = rnn(test_x.view(-1, 5, 9), test_lens)
+	test_output = rnn(test_x.view(-1, TIME_STEP, INPUT_SIZE), test_lens)
 	pred_y = torch.max(test_output, 1)[1].data.numpy().squeeze()
 	accuracy = sum(pred_y == test_y) / float(test_y.size)
 
